@@ -35,8 +35,8 @@ Tabs.Main:AddParagraph({
     })
 -- Toggle para ativar/desativar o ESP
 local ESPToggle = Tabs.Main:AddToggle("OnESP", {Title="ESP", Default = false})
-ESPToggle:OnChanged(function()
-    ESP.Enabled = Options.ESPToggle.Value
+ESPToggle:OnChanged(function(state)
+    ESP.Enabled = state
 end) -- Aqui está a chave de fechamento correta
 
 Options.ESPToggle:SetValue(false)
