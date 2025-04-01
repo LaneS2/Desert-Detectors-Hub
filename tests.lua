@@ -9,7 +9,7 @@ local Window = Fluent:CreateWindow({
     SubTitle = "by LaneS2",
     TabWidth = 120,
     Size = UDim2.fromOffset(460, 320),
-    Acrylic = true,  -- O fundo borrado pode ser ativado ou desativado
+    Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
@@ -24,41 +24,120 @@ local Options = Fluent.Options
 
 -- Variáveis para controlar o ESP
 local ESP = {
-    Enabled = true,
-    Distance = 500
+    Enabled = false,
+    Distance = 500,
+    Objects = {}
 }
+
+-- Funções do ESP
+local function createESP(part, text, color)
+    if not part:IsDescendantOf(workspace) then return end
+    
+    local char = game.Players.LocalPlayer.Character
+    local humanoidRootPart = char and char:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        local distance = (part.Position - humanoidRootPart.Position).Magnitude
+        if distance > ESP.Distance then return end
+    end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 100, 0, 20)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.Adornee = part
+    billboard.Parent = part
+    billboard.AlwaysOnTop = true
+
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0
+    label.TextSize = 10
+    label.Text = text
+
+    table.insert(ESP.Objects, billboard)
+end
+
+local function clearESP()
+    for _, obj in pairs(ESP.Objects) do
+        if obj then obj:Destroy() end
+    end
+    ESP.Objects = {}
+end
+
+local function updateESP()
+    clearESP()
+    
+    if not ESP.Enabled then return end
+    
+    for _, item in pairs(workspace.Loot:GetChildren()) do
+        if item:IsA("Model") then
+            local primaryPart = item.PrimaryPart or item:FindFirstChildOfClass("BasePart")
+            if primaryPart then
+                createESP(primaryPart, item.Name, Color3.fromRGB(255, 255, 255))
+            end
+        elseif item:IsA("BasePart") then
+            createESP(item, item.Name, Color3.fromRGB(255, 255, 255))
+        end
+    end
+end
+
+-- Conexões de eventos
+workspace.Loot.ChildAdded:Connect(function(child)
+    if ESP.Enabled then
+        if child:IsA("Model") then
+            local primaryPart = child.PrimaryPart or child:FindFirstChildOfClass("BasePart")
+            if primaryPart then
+                createESP(primaryPart, child.Name, Color3.fromRGB(255, 255, 255))
+            end
+        elseif child:IsA("BasePart") then
+            createESP(child, child.Name, Color3.fromRGB(255, 255, 255))
+        end
+    end
+end)
+
+workspace.Loot.ChildRemoved:Connect(function(child)
+    for i, obj in ipairs(ESP.Objects) do
+        if obj.Adornee and (obj.Adornee == child or obj.Adornee:IsDescendantOf(child)) then
+            obj:Destroy()
+            table.remove(ESP.Objects, i)
+            break
+        end
+    end
+end)
+
+-- Atualiza quando o jogador se move
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    local rootPart = character:WaitForChild("HumanoidRootPart", 3)
+    if rootPart then
+        rootPart:GetPropertyChangedSignal("Position"):Connect(updateESP)
+    end
+end)
+
+if game.Players.LocalPlayer.Character then
+    game.Players.LocalPlayer.CharacterAdded:Fire(game.Players.LocalPlayer.Character)
+end
 
 -- Adicionando a seção de Configs Esp
 Tabs.Main:AddParagraph({
-        Title = "Esp",
-        Content = "Settings"
-    })
+    Title = "Esp",
+    Content = "Settings"
+})
+
 -- Toggle para ativar/desativar o ESP
-local ESPToggle = Tabs.Main:AddToggle("OnESP", {Title="ESP", Default = false})
-ESPToggle:OnChanged(function()
-    if ESP.Enabled == false then
-        ESP.Enabled = true
-    else
-        ESP.Enabled = false
-    end
-end) -- Aqui está a chave de fechamento correta
+local ESPToggle = Tabs.Main:AddToggle("OnESP", {
+    Title = "ESP", 
+    Default = ESP.Enabled
+})
 
-Options.ESPToggle:SetValue(false)
-
--- Caixa de texto para definir a distância do ESP
-local DistanceInput = Tabs.Main:AddInput("Distância do ESP", {
-    Title = "Distância",
-    Default = tostring(ESP.Distance),
-    Numeric = true,
-    Finished = true
-}, function(value)
-    local distance = tonumber(value)
-    if distance then
-        ESP.Distance = distance
-        print("Distância do ESP:", ESP.Distance)
-    else
-        print("Por favor, insira um valor válido para a distância.")
-    end
+ESPToggle:OnChanged(function(value)
+    ESP.Enabled = value
+    updateESP()
+    Fluent:Notify({
+        Title = "ESP",
+        Content = value and "ESP Ativado" or "ESP Desativado",
+        Duration = 2
+    })
 end)
 
 -- Slider para ajustar a distância do ESP
@@ -71,30 +150,25 @@ local DistanceSlider = Tabs.Main:AddSlider("Distância do ESP", {
     Rounding = 1,
     Callback = function(value)
         ESP.Distance = value
-        print("Distância ajustada para:", ESP.Distance)
+        if ESP.Enabled then
+            updateESP()
+        end
+        Fluent:Notify({
+            Title = "ESP",
+            Content = "Distância ajustada para: " .. value,
+            Duration = 2
+        })
     end
 })
 
--- Função para atualizar o ESP
-local function UpdateESP()
-    if ESP.Enabled then
-        print("ESP Ativado com distância:", ESP.Distance)
-        -- Aqui você pode adicionar a lógica do ESP, utilizando a distância configurada
-    else
-        print("ESP Desativado")
-    end
-end
-
--- Atualiza o ESP constantemente
-game:GetService("RunService").Heartbeat:Connect(function()
-    UpdateESP()
-end)
+-- Atualização inicial
+updateESP()
 
 -- Adicionar uma notificação informando que o script foi carregado
 Fluent:Notify({
     Title = "Fluent",
     Content = "O script foi carregado.",
-    Duration = 8
+    Duration = 5
 })
 
 -- SaveManager e InterfaceManager para salvar as configurações
