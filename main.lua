@@ -1,53 +1,59 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ObjectsFolder = ReplicatedStorage:WaitForChild("Objects")
 
-local function highlightObject(obj) -- Destaca objetos novos (opcional)
+-- Função para verificar e destacar objetos
+local function checkAndHighlight(obj)
     if obj:IsA("BasePart") then
+        print("-> " .. obj.Name .. " (Tipo: Part)")
         obj.BrickColor = BrickColor.new("Bright red")
         obj.Material = Enum.Material.Neon
+    elseif obj:IsA("Model") then
+        print("-> " .. obj.Name .. " (Tipo: Model)")
+    elseif obj:IsA("MeshPart") then
+        print("-> " .. obj.Name .. " (Tipo: MeshPart)")
+    elseif obj:IsA("UnionOperation") then
+        print("-> " .. obj.Name .. " (Tipo: UnionOperation)")
+    else
+        print("-> " .. obj.Name .. " (Tipo: " .. obj.ClassName .. ")")
     end
 end
 
+-- Lista todos os objetos e seus tipos
 local function listObjects()
-    print("\n=== LISTA DE OBJETOS ===")
+    print("\n=== OBJETOS EM 'Objects' ===")
     for _, obj in pairs(ObjectsFolder:GetChildren()) do
-        print("-> " .. obj.Name)
+        checkAndHighlight(obj)
     end
-    print("=======================")
+    print("===========================")
 end
 
--- Monitora adições/remoções
+-- Monitora novos objetos
 local function startMonitoring()
     listObjects() -- Lista inicial
     
     ObjectsFolder.ChildAdded:Connect(function(newObj)
-        print("[+] NOVO OBJETO: " .. newObj.Name)
-        highlightObject(newObj) -- Destaca se for uma parte
-        listObjects() -- Atualiza lista
+        print("\n[+] NOVO OBJETO DETECTADO!")
+        checkAndHighlight(newObj)
     end)
 
     ObjectsFolder.ChildRemoved:Connect(function(removedObj)
-        print("[-] OBJETO REMOVIDO: " .. removedObj.Name)
-        listObjects() -- Atualiza lista
+        print("\n[-] OBJETO REMOVIDO: " .. removedObj.Name .. " (Tipo: " .. removedObj.ClassName .. ")")
     end)
 end
 
 -- Inicia o monitoramento
 startMonitoring()
 
--- Opção para parar o script (útil se estiver em loop)
-print("\nPressione **F** para parar o monitoramento.")
-local stopKey = "F" -- Altere para a tecla desejada
-
+-- Opção para parar o script (tecla F)
 local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input, _)
-    if input.KeyCode == Enum.KeyCode[stopKey] then
+    if input.KeyCode == Enum.KeyCode.F then
         print("\n[!] MONITORAMENTO PARADO!")
-        getgenv().STOP_MONITORING = true -- Para loops externos
+        getgenv().STOP_MONITORING = true
     end
 end)
 
--- Loop infinito (opcional, mas útil para manter o script ativo)
+-- Loop infinito (opcional)
 while wait(1) and not getgenv().STOP_MONITORING do
-    -- Pode adicionar verificações extras aqui
+    -- Pode adicionar mais verificações aqui
 end
