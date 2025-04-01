@@ -1,59 +1,97 @@
+-- Configurações (ajustáveis)
+local MAX_DISTANCE = 300 -- Distância máxima em studs
+local TEXT_COLOR = Color3.new(1, 1, 1) -- Cor do texto (branco)
+local TOGGLE_KEY = Enum.KeyCode.F -- Tecla para ligar/desligar (F)
+
+-- Serviços
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ObjectsFolder = ReplicatedStorage:WaitForChild("Objects")
-
--- Função para verificar e destacar objetos
-local function checkAndHighlight(obj)
-    if obj:IsA("BasePart") then
-        print("-> " .. obj.Name .. " (Tipo: Part)")
-        obj.BrickColor = BrickColor.new("Bright red")
-        obj.Material = Enum.Material.Neon
-    elseif obj:IsA("Model") then
-        print("-> " .. obj.Name .. " (Tipo: Model)")
-    elseif obj:IsA("MeshPart") then
-        print("-> " .. obj.Name .. " (Tipo: MeshPart)")
-    elseif obj:IsA("UnionOperation") then
-        print("-> " .. obj.Name .. " (Tipo: UnionOperation)")
-    else
-        print("-> " .. obj.Name .. " (Tipo: " .. obj.ClassName .. ")")
-    end
-end
-
--- Lista todos os objetos e seus tipos
-local function listObjects()
-    print("\n=== OBJETOS EM 'Objects' ===")
-    for _, obj in pairs(ObjectsFolder:GetChildren()) do
-        checkAndHighlight(obj)
-    end
-    print("===========================")
-end
-
--- Monitora novos objetos
-local function startMonitoring()
-    listObjects() -- Lista inicial
-    
-    ObjectsFolder.ChildAdded:Connect(function(newObj)
-        print("\n[+] NOVO OBJETO DETECTADO!")
-        checkAndHighlight(newObj)
-    end)
-
-    ObjectsFolder.ChildRemoved:Connect(function(removedObj)
-        print("\n[-] OBJETO REMOVIDO: " .. removedObj.Name .. " (Tipo: " .. removedObj.ClassName .. ")")
-    end)
-end
-
--- Inicia o monitoramento
-startMonitoring()
-
--- Opção para parar o script (tecla F)
+local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+
+local LOCAL_PLAYER = Players.LocalPlayer
+local ObjectsFolder = ReplicatedStorage:FindFirstChild("Objects")
+
+if not ObjectsFolder then
+    warn("⚠ Pasta 'Objects' não encontrada!")
+    return
+end
+
+-- Variáveis de controle
+local enabled = false
+local nameTags = {} -- Armazena as tags criadas
+
+-- Cria um BillboardGui para mostrar o nome
+local function createNameTag(model)
+    if nameTags[model] then return end -- Evita duplicar
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_NameTag"
+    billboard.Adornee = model:IsA("Model") and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")) or model
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.LightInfluence = 0
+    billboard.Parent = model
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = model.Name
+    textLabel.TextColor3 = TEXT_COLOR
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Parent = billboard
+
+    nameTags[model] = billboard -- Guarda a referência
+end
+
+-- Remove todas as tags
+local function clearNameTags()
+    for model, tag in pairs(nameTags) do
+        tag:Destroy()
+        nameTags[model] = nil
+    end
+end
+
+-- Atualiza as tags (mostra/esconde conforme a distância)
+local function updateNameTags()
+    if not enabled then return end
+
+    local character = LOCAL_PLAYER.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    for _, model in ipairs(ObjectsFolder:GetChildren()) do
+        if model:IsA("Model") then
+            local primaryPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+            if primaryPart then
+                local distance = (primaryPart.Position - rootPart.Position).Magnitude
+                if distance <= MAX_DISTANCE then
+                    createNameTag(model)
+                else
+                    if nameTags[model] then
+                        nameTags[model]:Destroy()
+                        nameTags[model] = nil
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Liga/desliga com a tecla
 UIS.InputBegan:Connect(function(input, _)
-    if input.KeyCode == Enum.KeyCode.F then
-        print("\n[!] MONITORAMENTO PARADO!")
-        getgenv().STOP_MONITORING = true
+    if input.KeyCode == TOGGLE_KEY then
+        enabled = not enabled
+        if not enabled then
+            clearNameTags()
+        end
+        print("ESP " .. (enabled and "LIGADO" or "DESLIGADO"))
     end
 end)
 
--- Loop infinito (opcional)
-while wait(1) and not getgenv().STOP_MONITORING do
-    -- Pode adicionar mais verificações aqui
-end
+-- Atualiza a cada frame
+RunService.Heartbeat:Connect(updateNameTags)
+
+print("✅ Script carregado! Pressione " .. TOGGLE_KEY.Name .. " para ligar/desligar."
