@@ -1,8 +1,4 @@
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Other/main/1"))()
+local library = loadstring(game:HttpGet('https://raw.githubusercontent.com/cueshut/saves/main/criminality%20paste%20ui%20library'))()
 
-library:init() -- Initalizes Library Do Not Delete This
-
-local Window = library.NewWindow({
-	title = "Informant.Wtf",
-	size = UDim2.new(0, 525, 0, 650)
-})
+-- // Window \\ --
+local window = library.new('leadmarker is so hot', 'leadmarker')
