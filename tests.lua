@@ -130,14 +130,17 @@ local ESPToggle = Tabs.Main:AddToggle("OnESP", {
     Default = ESP.Enabled
 })
 
-ESPToggle:OnChanged(function(value)
-    ESP.Enabled = value
+ESPToggle:OnChanged(function()
+    if ESP.Enabled == true then
+        ESP.Enabled = false
+    else
     updateESP()
     Fluent:Notify({
         Title = "ESP",
-        Content = value and "ESP Ativado" or "ESP Desativado",
+        Content = "ESP Ativado",
         Duration = 2
     })
+    end
 end)
 
 -- Slider para ajustar a distância do ESP
