@@ -10,7 +10,14 @@ local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 
 local LOCAL_PLAYER = Players.LocalPlayer
-local ObjectsFolder = ReplicatedStorage:FindFirstChild("Objects")
+local ObjectsFolder
+
+for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+    if child.Name == "Objects" then
+        ObjectsFolder = child
+        break
+    end
+end
 
 if not ObjectsFolder then
     warn("⚠ Pasta 'Objects' não encontrada!")
