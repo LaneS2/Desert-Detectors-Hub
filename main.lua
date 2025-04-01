@@ -2,124 +2,112 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Carrega a Fluent UI (leve e responsiva)
-local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/Source.lua"))()
+-- Carrega a Elerium UI
+local Elerium = loadstring(game:HttpGet("https://raw.githubusercontent.com/deeeity/elerium-ui/main/src.lua"))()
 
--- Configuração da janela compacta
-local Window = Fluent:CreateWindow({
-    Title = "Micro ESP",
-    SubTitle = "by github.com",
-    TabWidth = 80,
-    Size = UDim2.fromOffset(100, 60), -- Tamanho ultra compacto
-    Acrylic = false, -- Desativa efeitos para melhor performance
-    Theme = "Dark"
-})
-
--- Cria uma única aba (como solicitado)
-local Tab = Window:AddTab({
-    Title = "ESP",
-    Icon = ""
+-- Cria a janela flutuante minimalista
+local window = Elerium:Window({
+    text = "ESP PRO",
+    position = UDim2.new(0.02, 0, 0.02, 0), -- Canto superior esquerdo
+    size = UDim2.new(0, 120, 0, 30) -- Tamanho compacto
 })
 
 -- Variáveis de configuração
-local ESPConfig = {
-    Enabled = false,
-    MaxDistance = 500
+local ESP = {
+    Active = false,
+    Distance = 500,
+    Objects = {}
 }
 
--- Sistema de ESP otimizado
-local espObjects = {}
-
-local function updateESP()
+-- Função principal do ESP
+local function UpdateESP()
     -- Limpa ESP antigo
-    for _, obj in pairs(espObjects) do
+    for _, obj in pairs(ESP.Objects) do
         if obj then obj:Destroy() end
     end
-    espObjects = {}
+    ESP.Objects = {}
 
-    if not ESPConfig.Enabled then return end
+    if not ESP.Active then return end
 
-    -- Verifica se o jogador tem character
+    -- Verifica se o jogador está no game
     local character = LocalPlayer.Character
     if not character then return end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
 
-    -- Cria ESP para cada item dentro da distância
+    -- Renderiza os itens
     for _, item in pairs(workspace.Loot:GetChildren()) do
-        local primaryPart = item:IsA("Model") and item.PrimaryPart or item:IsA("BasePart") and item
-        if primaryPart then
-            local distance = (primaryPart.Position - rootPart.Position).Magnitude
-            if distance <= ESPConfig.MaxDistance then
+        local part = item:IsA("Model") and item.PrimaryPart or item:IsA("BasePart") and item
+        if part then
+            local distance = (part.Position - root.Position).Magnitude
+            if distance <= ESP.Distance then
                 local billboard = Instance.new("BillboardGui")
                 billboard.Size = UDim2.new(0, 100, 0, 20)
-                billboard.Adornee = primaryPart
-                billboard.Parent = primaryPart
+                billboard.Adornee = part
+                billboard.Parent = part
                 billboard.AlwaysOnTop = true
-                billboard.LightInfluence = 0
 
-                local label = Instance.new("TextLabel", billboard)
+                local label = Instance.new("TextLabel")
                 label.Size = UDim2.new(1, 0, 1, 0)
                 label.BackgroundTransparency = 1
                 label.Text = item.Name
                 label.TextColor3 = Color3.new(1, 1, 1)
                 label.TextSize = 10
+                label.Parent = billboard
 
-                table.insert(espObjects, billboard)
+                table.insert(ESP.Objects, billboard)
             end
         end
     end
 end
 
--- Conexões de eventos otimizadas
-workspace.Loot.ChildAdded:Connect(updateESP)
-workspace.Loot.ChildRemoved:Connect(updateESP)
+-- Conexões de eventos
+workspace.Loot.ChildAdded:Connect(UpdateESP)
+workspace.Loot.ChildRemoved:Connect(UpdateESP)
 
-local function onCharacterAdded(character)
-    local rootPart = character:WaitForChild("HumanoidRootPart", 2)
-    if rootPart then
-        rootPart:GetPropertyChangedSignal("Position"):Connect(updateESP)
+LocalPlayer.CharacterAdded:Connect(function(c)
+    local root = c:WaitForChild("HumanoidRootPart", 2)
+    if root then
+        root:GetPropertyChangedSignal("Position"):Connect(UpdateESP)
     end
-end
+end)
 
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 if LocalPlayer.Character then
-    task.spawn(onCharacterAdded, LocalPlayer.Character)
+    LocalPlayer.CharacterAdded:Fire(LocalPlayer.Character)
 end
 
--- Cria os controles MÍNIMOS
-Tab:AddToggle("EspToggle", {
-    Title = "ESP Ativo",
-    Default = ESPConfig.Enabled,
-    Callback = function(value)
-        ESPConfig.Enabled = value
-        updateESP()
+-- Cria os controles na UI
+window:Toggle({
+    text = "Ativar ESP",
+    flag = "esp_toggle",
+    state = false,
+    callback = function(state)
+        ESP.Active = state
+        UpdateESP()
     end
 })
 
-Tab:AddSlider("DistanceSlider", {
-    Title = "Distância: "..ESPConfig.MaxDistance,
-    Min = 50,
-    Max = 1000,
-    Default = ESPConfig.MaxDistance,
-    Rounding = 0,
-    Callback = function(value)
-        ESPConfig.MaxDistance = value
-        Tab:UpdateSlider("DistanceSlider", {
-            Title = "Distância: "..value
-        })
-        if ESPConfig.Enabled then
-            updateESP()
+window:Slider({
+    text = "Distância: "..ESP.Distance,
+    flag = "esp_distance",
+    min = 50,
+    max = 1000,
+    value = ESP.Distance,
+    callback = function(value)
+        ESP.Distance = value
+        window:UpdateSlider("esp_distance", {text = "Distância: "..value})
+        if ESP.Active then
+            UpdateESP()
         end
     end
 })
 
--- Inicialização
-Window:SelectTab(1)
-Fluent:Notify({
-    Title = "Micro ESP",
-    Content = "Script carregado!",
-    Duration = 3
+-- Notificação inicial
+window:Notification({
+    title = "ESP Carregado",
+    text = "Pressione F para abrir/fechar",
+    duration = 3
 })
 
-updateESP()
+-- Atualização inicial
+UpdateESP()
