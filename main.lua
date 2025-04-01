@@ -34,10 +34,12 @@ Tabs.Main:AddParagraph({
         Content = "Settings"
     })
 -- Toggle para ativar/desativar o ESP
-local ESPToggle = Tabs.Main:AddToggle("Ativar ESP", {flag = "ESP_Enabled", default = false}, function(state)
-    ESP.Enabled = state
-    print("ESP Ativado:", ESP.Enabled)
-end)
+local ESPToggle = Tabs.Main:AddToggle("OnESP", {Title="ESP", Default = false})
+ESPToggle:OnChanged(function()
+    ESP.Enabled = Options.ESPToggle.Value
+end) -- Aqui está a chave de fechamento correta
+
+Options.ESPToggle:SetValue(false)
 
 -- Caixa de texto para definir a distância do ESP
 local DistanceInput = Tabs.Main:AddInput("Distância do ESP", {
