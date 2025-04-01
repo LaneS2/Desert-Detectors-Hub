@@ -24,7 +24,7 @@ local Options = Fluent.Options
 
 -- Variáveis para controlar o ESP
 local ESP = {
-    Enabled = false,
+    Enabled = true,
     Distance = 500
 }
 
@@ -35,8 +35,11 @@ Tabs.Main:AddParagraph({
     })
 -- Toggle para ativar/desativar o ESP
 local ESPToggle = Tabs.Main:AddToggle("OnESP", {Title="ESP", Default = false})
-ESPToggle:OnChanged(function(state)
-    ESP.Enabled = state
+ESPToggle:OnChanged(function()
+        if ESP.Enabled == false then
+            ESP.Enabled = true
+        else
+            ESP.Enabled = false
 end) -- Aqui está a chave de fechamento correta
 
 Options.ESPToggle:SetValue(false)
