@@ -1,9 +1,6 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
--- Carrega a Elerium UI
-local Elerium = loadstring(game:HttpGet("https://raw.githubusercontent.com/weakhoes/Roblox-UI-Libs/main/Elerium%20%5BIMGUI%5D%20Lib/Elerium%20%5BIMGUI%5D%20Lib%20Source.lua"))()
+-- Carrega a PPHud UI
+local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/weakhoes/Roblox-UI-Libs/refs/heads/main/PPHud%20Lib/PPHud%20Lib%20Source.lua'))()
+local Flags = Library.Flags
 
 -- Configurações do ESP
 local ESP = {
@@ -12,15 +9,15 @@ local ESP = {
     Objects = {}
 }
 
--- Cria a janela compacta
-local window = Elerium:AddWindow("ESP Mini", {
-    main_color = Color3.fromRGB(41, 74, 122),
-    min_size = Vector2.new(200, 60), -- Largura x Altura
-    toggle_key = Enum.KeyCode.F -- Tecla para abrir/fechar
+-- Cria a janela usando a PPHud Library
+local Window = Library:Window({
+    Text = "ESP Mini"
 })
 
--- Adiciona uma única aba
-local tab = window:AddTab("Config")
+-- Adiciona uma aba para as configurações
+local Tab = Window:Tab({
+    Text = "Config"
+})
 
 -- Sistema de ESP
 local function UpdateESP()
@@ -32,8 +29,8 @@ local function UpdateESP()
 
     if not ESP.Enabled then return end
 
-    -- Verifica se o jogador está no game
-    local character = LocalPlayer.Character
+    -- Verifica se o jogador está no jogo
+    local character = game.Players.LocalPlayer.Character
     if not character then return end
     local root = character:FindFirstChild("HumanoidRootPart")
     if not root then return end
@@ -68,32 +65,43 @@ end
 workspace.Loot.ChildAdded:Connect(UpdateESP)
 workspace.Loot.ChildRemoved:Connect(UpdateESP)
 
-LocalPlayer.CharacterAdded:Connect(function(c)
+game.Players.LocalPlayer.CharacterAdded:Connect(function(c)
     local root = c:WaitForChild("HumanoidRootPart", 2)
     if root then
         root:GetPropertyChangedSignal("Position"):Connect(UpdateESP)
     end
 end)
 
-if LocalPlayer.Character then
-    LocalPlayer.CharacterAdded:Fire(LocalPlayer.Character)
+if game.Players.LocalPlayer.Character then
+    game.Players.LocalPlayer.CharacterAdded:Fire(game.Players.LocalPlayer.Character)
 end
 
--- Cria os controles na UI
-tab:AddSwitch("Ativar ESP", function(state)
-    ESP.Enabled = state
-    UpdateESP()
-end)
+-- Cria os controles na UI usando a PPHud Library
+local Section = Tab:Section({
+    Text = "ESP Settings"
+})
 
-tab:AddSlider("Distância", function(value)
-    ESP.Distance = value
-    if ESP.Enabled then
+Section:Check({
+    Text = "Ativar ESP",
+    Flag = "ESPEnabled",
+    Callback = function(state)
+        ESP.Enabled = state
         UpdateESP()
     end
-end, {
-    min = 50,
-    max = 1000,
-    default = 500
+})
+
+Section:Slider({
+    Text = "Distância",
+    Minimum = 50,
+    Maximum = 1000,
+    Default = 500,
+    Postfix = "m",
+    Callback = function(value)
+        ESP.Distance = value
+        if ESP.Enabled then
+            UpdateESP()
+        end
+    end
 })
 
 -- Atualização inicial
