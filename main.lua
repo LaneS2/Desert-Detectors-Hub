@@ -3,23 +3,26 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Carrega a Elerium UI
-local Elerium = loadstring(game:HttpGet("https://raw.githubusercontent.com/deeeity/elerium-ui/main/src.lua"))()
+local Elerium = loadstring(game:HttpGet("https://raw.githubusercontent.com/weakhoes/Roblox-UI-Libs/main/Elerium%20%5BIMGUI%5D%20Lib/Elerium%20%5BIMGUI%5D%20Lib%20Source.lua"))()
 
--- Cria a janela flutuante minimalista
-local window = Elerium:Window({
-    text = "ESP PRO",
-    position = UDim2.new(0.02, 0, 0.02, 0), -- Canto superior esquerdo
-    size = UDim2.new(0, 120, 0, 30) -- Tamanho compacto
-})
-
--- Variáveis de configuração
+-- Configurações do ESP
 local ESP = {
-    Active = false,
+    Enabled = false,
     Distance = 500,
     Objects = {}
 }
 
--- Função principal do ESP
+-- Cria a janela compacta
+local window = Elerium:AddWindow("ESP Mini", {
+    main_color = Color3.fromRGB(41, 74, 122),
+    min_size = Vector2.new(200, 60), -- Largura x Altura
+    toggle_key = Enum.KeyCode.F -- Tecla para abrir/fechar
+})
+
+-- Adiciona uma única aba
+local tab = window:AddTab("Config")
+
+-- Sistema de ESP
 local function UpdateESP()
     -- Limpa ESP antigo
     for _, obj in pairs(ESP.Objects) do
@@ -27,7 +30,7 @@ local function UpdateESP()
     end
     ESP.Objects = {}
 
-    if not ESP.Active then return end
+    if not ESP.Enabled then return end
 
     -- Verifica se o jogador está no game
     local character = LocalPlayer.Character
@@ -77,36 +80,20 @@ if LocalPlayer.Character then
 end
 
 -- Cria os controles na UI
-window:Toggle({
-    text = "Ativar ESP",
-    flag = "esp_toggle",
-    state = false,
-    callback = function(state)
-        ESP.Active = state
+tab:AddSwitch("Ativar ESP", function(state)
+    ESP.Enabled = state
+    UpdateESP()
+end)
+
+tab:AddSlider("Distância", function(value)
+    ESP.Distance = value
+    if ESP.Enabled then
         UpdateESP()
     end
-})
-
-window:Slider({
-    text = "Distância: "..ESP.Distance,
-    flag = "esp_distance",
+end, {
     min = 50,
     max = 1000,
-    value = ESP.Distance,
-    callback = function(value)
-        ESP.Distance = value
-        window:UpdateSlider("esp_distance", {text = "Distância: "..value})
-        if ESP.Active then
-            UpdateESP()
-        end
-    end
-})
-
--- Notificação inicial
-window:Notification({
-    title = "ESP Carregado",
-    text = "Pressione F para abrir/fechar",
-    duration = 3
+    default = 500
 })
 
 -- Atualização inicial
