@@ -1,40 +1,52 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
-if not PlayerGui then return end -- Asegura que el jugador tiene GUI
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- 📌 Crear GUI Principal
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-ScreenGui.ResetOnSpawn = false
+-- Carregar a UI Lib do Criminality
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/UI-Libraries/main/Vynixius/Source.lua"))()
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 200, 0, 150)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true -- Hacer la GUI arrastrable
+-- Criar a janela principal
+local Window = Library:AddWindow({
+    title = {"ESP Config", "v1.0"},
+    theme = {
+        Accent = Color3.fromRGB(255, 0, 0)
+    },
+    key = Enum.KeyCode.RightControl, -- Tecla para abrir/fechar
+    default = true
+})
 
-local ToggleButton = Instance.new("TextButton", Frame)
-ToggleButton.Size = UDim2.new(1, 0, 0, 30)
-ToggleButton.Position = UDim2.new(0, 0, 0, 0)
-ToggleButton.Text = "Toggle ESP (ON)"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+-- Adicionar aba principal
+local MainTab = Window:AddTab("Configurações", {default = true})
 
--- 🌟 Sistema de ESP sin rarezas
-local activeESP = true
+-- Adicionar seção para o ESP
+local ESPSection = MainTab:AddSection("ESP Settings", {default = false})
 
--- 🏷️ Crear ESP en los objetos
+-- Variáveis de configuração
+local ESPConfig = {
+    Enabled = true,
+    MaxDistance = 500,
+    ShowNames = true
+}
+
+-- Sistema de ESP
 local espObjects = {}
 
 local function createESP(part, text, color)
+    if not part:IsDescendantOf(workspace) then return end
+    
+    local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) 
+        and (part.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude 
+        or math.huge
+    
+    if distance > ESPConfig.MaxDistance then return end
+    
     local billboard = Instance.new("BillboardGui")
     billboard.Size = UDim2.new(0, 100, 0, 20)
     billboard.StudsOffset = Vector3.new(0, 2, 0)
     billboard.Adornee = part
     billboard.Parent = part
     billboard.AlwaysOnTop = true
+    billboard.MaxDistance = ESPConfig.MaxDistance
 
     local label = Instance.new("TextLabel", billboard)
     label.Size = UDim2.new(1, 0, 1, 0)
@@ -42,41 +54,88 @@ local function createESP(part, text, color)
     label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
     label.TextStrokeTransparency = 0
     label.TextSize = 10
-    label.Text = text
+    label.Text = ESPConfig.ShowNames and text or "Item"
 
     table.insert(espObjects, billboard)
 end
 
-local function updateESP()
-    -- Limpiar los antiguos ESP
+local function clearESP()
     for _, obj in pairs(espObjects) do
-        obj:Destroy()
+        if obj then
+            obj:Destroy()
+        end
     end
     espObjects = {}
+end
 
-    if not activeESP then return end
-
-    -- Mostrar todos los ítems sin filtrar por rareza
+local function updateESP()
+    clearESP()
+    
+    if not ESPConfig.Enabled then return end
+    
     for _, item in pairs(workspace.Loot:GetChildren()) do
-        if item:IsA("Model") or item:IsA("BasePart") then
-            createESP(item, item.Name, Color3.fromRGB(255, 255, 255)) -- Puedes ajustar el color si lo deseas
+        if (item:IsA("Model") or item:IsA("BasePart")) and item:FindFirstChildOfClass("BasePart") then
+            local primaryPart = item:IsA("Model") and item.PrimaryPart or item
+            if primaryPart then
+                createESP(primaryPart, item.Name, Color3.fromRGB(255, 255, 255))
+            end
         end
     end
 end
 
--- Detectar nuevos ítems cuando se agregan a la carpeta 'Loot'
+-- Conexões de eventos
 workspace.Loot.ChildAdded:Connect(function(child)
-    if child:IsA("Model") or child:IsA("BasePart") then
-        createESP(child, child.Name, Color3.fromRGB(255, 255, 255)) -- Crear ESP cuando se añaden nuevos ítems
+    if ESPConfig.Enabled and (child:IsA("Model") or child:IsA("BasePart")) and child:FindFirstChildOfClass("BasePart") then
+        local primaryPart = child:IsA("Model") and child.PrimaryPart or child
+        if primaryPart then
+            createESP(primaryPart, child.Name, Color3.fromRGB(255, 255, 255))
+        end
     end
 end)
 
--- Actualiza el ESP cuando el script inicia
-updateESP()
+workspace.Loot.ChildRemoved:Connect(function(child)
+    for i, obj in ipairs(espObjects) do
+        if obj.Adornee and (obj.Adornee == child or obj.Adornee:IsDescendantOf(child)) then
+            obj:Destroy()
+            table.remove(espObjects, i)
+            break
+        end
+    end
+end)
 
--- 🎛️ Botón para activar/desactivar ESP
-ToggleButton.MouseButton1Click:Connect(function()
-    activeESP = not activeESP
-    ToggleButton.Text = "Toggle ESP (" .. (activeESP and "ON" or "OFF") .. ")"
+-- Atualizar ESP quando o jogador se move
+local function onCharacterAdded(character)
+    local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+    if rootPart then
+        rootPart:GetPropertyChangedSignal("Position"):Connect(function()
+            if ESPConfig.Enabled then
+                updateESP()
+            end
+        end)
+    end
+end
+
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Elementos da UI
+ESPSection:AddToggle("Ativar ESP", {flag = "esp_enabled", default = true}, function(val)
+    ESPConfig.Enabled = val
     updateESP()
 end)
+
+ESPSection:AddSlider("Distância Máxima", {min = 50, max = 1000, default = 500, flag = "esp_distance"}, function(val)
+    ESPConfig.MaxDistance = val
+    updateESP()
+end)
+
+ESPSection:AddToggle("Mostrar Nomes", {flag = "esp_names", default = true}, function(val)
+    ESPConfig.ShowNames = val
+    updateESP()
+end)
+
+-- Atualização inicial
+updateESP()
