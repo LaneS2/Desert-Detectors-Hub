@@ -1,13 +1,8 @@
--- Carrega a PPHud UI
-local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/Rain-Design/PPHUD/main/Library.lua'))()
-local Flags = Library.Flags
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Other/main/1"))()
 
--- Cria a janela usando a PPHud Library
-local Window = Library:Window({
-    Text = "ESP Mini"
-})
+library:init() -- Initalizes Library Do Not Delete This
 
--- Adiciona uma aba para as configurações
-local Tab = Window:Tab({
-    Text = "Config"
+local Window = library.NewWindow({
+	title = "Informant.Wtf",
+	size = UDim2.new(0, 525, 0, 650)
 })
