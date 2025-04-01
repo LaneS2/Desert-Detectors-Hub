@@ -2,47 +2,61 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Carrega a Orion Lib (leve e customizável)
-local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
+-- Carrega a Fluent UI (leve e responsiva)
+local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/Source.lua"))()
 
--- Cria a janela MICRO (45x25)
-local Window = OrionLib:MakeWindow({
-    Name = "ESP Mini",
-    HidePremium = true,
-    SaveConfig = false,
-    IntroEnabled = false,
-    ConfigFolder = "OrionESP",
-    Size = UDim2.new(0, 25, 0, 45), -- LARGURA x ALTURA
-    Position = UDim2.new(0.5, -12, 0.1, 0) -- Centralizado
+-- Configuração da janela compacta
+local Window = Fluent:CreateWindow({
+    Title = "Micro ESP",
+    SubTitle = "by github.com",
+    TabWidth = 80,
+    Size = UDim2.fromOffset(100, 60), -- Tamanho ultra compacto
+    Acrylic = false, -- Desativa efeitos para melhor performance
+    Theme = "Dark"
 })
 
--- Variáveis do ESP
+-- Cria uma única aba (como solicitado)
+local Tab = Window:AddTab({
+    Title = "ESP",
+    Icon = ""
+})
+
+-- Variáveis de configuração
 local ESPConfig = {
     Enabled = false,
     MaxDistance = 500
 }
 
--- Sistema de ESP (versão compacta)
+-- Sistema de ESP otimizado
 local espObjects = {}
 
 local function updateESP()
-    for _, obj in pairs(espObjects) do obj:Destroy() end
+    -- Limpa ESP antigo
+    for _, obj in pairs(espObjects) do
+        if obj then obj:Destroy() end
+    end
     espObjects = {}
 
     if not ESPConfig.Enabled then return end
 
+    -- Verifica se o jogador tem character
+    local character = LocalPlayer.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    -- Cria ESP para cada item dentro da distância
     for _, item in pairs(workspace.Loot:GetChildren()) do
-        local part = item:IsA("Model") and item.PrimaryPart or item:IsA("BasePart") and item
-        if part then
-            local distance = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
-                and (part.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude or math.huge
-            
+        local primaryPart = item:IsA("Model") and item.PrimaryPart or item:IsA("BasePart") and item
+        if primaryPart then
+            local distance = (primaryPart.Position - rootPart.Position).Magnitude
             if distance <= ESPConfig.MaxDistance then
                 local billboard = Instance.new("BillboardGui")
                 billboard.Size = UDim2.new(0, 100, 0, 20)
-                billboard.Adornee = part
-                billboard.Parent = part
+                billboard.Adornee = primaryPart
+                billboard.Parent = primaryPart
                 billboard.AlwaysOnTop = true
+                billboard.LightInfluence = 0
 
                 local label = Instance.new("TextLabel", billboard)
                 label.Size = UDim2.new(1, 0, 1, 0)
@@ -57,50 +71,55 @@ local function updateESP()
     end
 end
 
--- Conexões de eventos (otimizado)
+-- Conexões de eventos otimizadas
 workspace.Loot.ChildAdded:Connect(updateESP)
 workspace.Loot.ChildRemoved:Connect(updateESP)
 
-LocalPlayer.CharacterAdded:Connect(function()
-    local root = LocalPlayer.Character:WaitForChild("HumanoidRootPart", 2)
-    if root then root:GetPropertyChangedSignal("Position"):Connect(updateESP) end
-end)
-
-if LocalPlayer.Character then
-    LocalPlayer.CharacterAdded:Fire(LocalPlayer.Character)
+local function onCharacterAdded(character)
+    local rootPart = character:WaitForChild("HumanoidRootPart", 2)
+    if rootPart then
+        rootPart:GetPropertyChangedSignal("Position"):Connect(updateESP)
+    end
 end
 
--- Cria os controles MICRO
-local Tab = Window:MakeTab({
-    Name = "ESP",
-    Icon = "rbxassetid://0", -- Ícone vazio para economizar espaço
-    PremiumOnly = false
-})
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+if LocalPlayer.Character then
+    task.spawn(onCharacterAdded, LocalPlayer.Character)
+end
 
--- Toggle compacto
-Tab:AddToggle({
-    Name = "ESP",
-    Default = false,
-    Callback = function(Value)
-        ESPConfig.Enabled = Value
+-- Cria os controles MÍNIMOS
+Tab:AddToggle("EspToggle", {
+    Title = "ESP Ativo",
+    Default = ESPConfig.Enabled,
+    Callback = function(value)
+        ESPConfig.Enabled = value
         updateESP()
-    end    
+    end
 })
 
--- Slider ultra compacto
-Tab:AddSlider({
-    Name = "Distância",
+Tab:AddSlider("DistanceSlider", {
+    Title = "Distância: "..ESPConfig.MaxDistance,
     Min = 50,
     Max = 1000,
-    Default = 500,
-    Color = Color3.fromRGB(255, 0, 0),
-    Increment = 50,
-    Callback = function(Value)
-        ESPConfig.MaxDistance = Value
-        if ESPConfig.Enabled then updateESP() end
-    end    
+    Default = ESPConfig.MaxDistance,
+    Rounding = 0,
+    Callback = function(value)
+        ESPConfig.MaxDistance = value
+        Tab:UpdateSlider("DistanceSlider", {
+            Title = "Distância: "..value
+        })
+        if ESPConfig.Enabled then
+            updateESP()
+        end
+    end
 })
 
--- Inicia o ESP
-OrionLib:Init()
+-- Inicialização
+Window:SelectTab(1)
+Fluent:Notify({
+    Title = "Micro ESP",
+    Content = "Script carregado!",
+    Duration = 3
+})
+
 updateESP()
