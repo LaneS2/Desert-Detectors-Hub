@@ -5,11 +5,15 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local activeESP = true
+-- Variáveis globais
+local activeESP = false -- Começa desligado
 local espObjects = {}
+local lootConnection = nil -- Para controlar o evento ChildAdded
 
--- Function Esp
+-- Função para criar ESP
 local function createESP(part, text, color)
+    if not activeESP then return end -- Não cria ESP se estiver desligado
+    
     local billboard = Instance.new("BillboardGui")
     billboard.Size = UDim2.new(0, 100, 0, 20)
     billboard.StudsOffset = Vector3.new(0, 2, 0)
@@ -28,8 +32,9 @@ local function createESP(part, text, color)
     table.insert(espObjects, billboard)
 end
 
+-- Função para atualizar ESP
 local function updateESP()
-    -- Limpiar los antiguos ESP
+    -- Limpa ESPs antigos
     for _, obj in pairs(espObjects) do
         obj:Destroy()
     end
@@ -37,25 +42,31 @@ local function updateESP()
 
     if not activeESP then return end
 
-    -- Mostrar todos los ítems sin filtrar por rareza
+    -- Cria ESP para todos os itens no Loot
     for _, item in pairs(workspace.Loot:GetChildren()) do
         if item:IsA("Model") or item:IsA("BasePart") then
-            createESP(item, item.Name, Color3.fromRGB(255, 255, 255)) -- Puedes ajustar el color si lo deseas
+            createESP(item, item.Name, Color3.fromRGB(255, 255, 255))
         end
     end
 end
 
--- Detectar nuevos ítems cuando se agregan a la carpeta 'Loot'
-workspace.Loot.ChildAdded:Connect(function(child)
-    if child:IsA("Model") or child:IsA("BasePart") then
-        createESP(child, child.Name, Color3.fromRGB(255, 255, 255)) -- Crear ESP cuando se añaden nuevos ítems
+-- Função para ativar/desativar o evento ChildAdded
+local function toggleLootConnection(enable)
+    if lootConnection then
+        lootConnection:Disconnect()
+        lootConnection = nil
     end
-end)
+    
+    if enable then
+        lootConnection = workspace.Loot.ChildAdded:Connect(function(child)
+            if child:IsA("Model") or child:IsA("BasePart") then
+                createESP(child, child.Name, Color3.fromRGB(255, 255, 255))
+            end
+        end)
+    end
+end
 
--- Actualiza el ESP cuando el script inicia
-updateESP()
-
--- Create Fluent window
+-- Cria janela Fluent
 local Window = Fluent:CreateWindow({
     Title = "Desert Detectors " .. Fluent.Version,
     SubTitle = "by LaneS2",
@@ -66,7 +77,7 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Create tabs
+-- Cria abas
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -74,24 +85,25 @@ local Tabs = {
 
 local Options = Fluent.Options
 
--- Add ESP section
+-- Adiciona seção ESP
 Tabs.Main:AddParagraph({
     Title = "Esp",
     Content = "Settings"
 })
 
--- Toggle for ESP
+-- Toggle para ESP
 local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
     Title = "ESP",
     Default = false
 })
 
-ESPToggle:OnChanged(function()
-    activeESP = not activeESP
-    updateESP()
+ESPToggle:OnChanged(function(value)
+    activeESP = value
+    toggleLootConnection(activeESP) -- Ativa/desativa o evento
+    updateESP() -- Atualiza os ESPs visíveis
 end)
 
--- Initialize
+-- Inicializa SaveManager e InterfaceManager
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
@@ -102,10 +114,10 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
 
--- Load autosave config
+-- Carrega configuração automática
 SaveManager:LoadAutoloadConfig()
 
--- Notification
+-- Notificação
 Fluent:Notify({
     Title = "Desert Detectors",
     Content = "Script loaded successfully!",
