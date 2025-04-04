@@ -90,8 +90,58 @@ local Options = Fluent.Options
 -- Adiciona seção ESP
 Tabs.Main:AddParagraph({
     Title = "ESP",
-    Content = "Esp Item's"
+    Content = "Esp Items"
 })
+
+-- Adicione isso na sua aba Main (após criar a janela Fluent)
+local TeleportDropdown = Tabs.Main:AddDropdown("TeleportDropdown", {
+    Title = "Teleport to",
+    Values = {
+        "Tractor Seller",  -- Novo local
+        "Pablo Outpost"    -- Novo local
+    },
+    Multi = false,
+    Default = 1,
+})
+
+-- Configurar a ação quando um local é selecionado
+TeleportDropdown:OnChanged(function(selectedOption)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        Fluent:Notify({
+            Title = "Erro",
+            Content = "Player not found!",
+            Duration = 3
+        })
+        return
+    end
+
+    -- Tabela com as posições dos locais atualizada
+    local locations = {
+        ["Tractor Seller"] = Vector3.new(194, 77, -234),  -- Novo local
+        ["Pablo Outpost"] = Vector3.new(931, 77, -925)    -- Novo local
+    }
+
+    -- Verifica se o local existe na tabela
+    if locations[selectedOption] then
+        character.HumanoidRootPart.CFrame = CFrame.new(locations[selectedOption])
+        Fluent:Notify({
+            Title = "Teleport",
+            Content = "Teleported to: "..selectedOption,
+            SubContent = string.format("Coordenadas: X:%d Y:%d Z:%d", 
+                locations[selectedOption].X, 
+                locations[selectedOption].Y, 
+                locations[selectedOption].Z),
+            Duration = 5
+        })
+    else
+        Fluent:Notify({
+            Title = "Erro",
+            Content = "Local inválido!",
+            Duration = 3
+        })
+    end
+end)
 
 -- Toggle para ESP
 local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
