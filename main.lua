@@ -5,7 +5,7 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local activeESP = false
+local activeESP = true
 local espObjects = {}
 
 -- Function Esp
@@ -86,7 +86,7 @@ local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
     Default = false
 })
 
-ESPToggle:OnChanged(function(value)
+ESPToggle:OnChanged(function()
     activeESP = not activeESP
     updateESP()
 end)
@@ -111,5 +111,3 @@ Fluent:Notify({
     Content = "Script loaded successfully!",
     Duration = 5
 })
-
-updateESP()
