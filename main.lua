@@ -7,30 +7,25 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Variáveis globais
 local activeESP = false -- Começa desligado
-local espDistance = 100 -- Distância padrão (pode ser alterada)
+local espDistance = 500 -- DISTÂNCIA FIXA DE 500 STUDS
 local espObjects = {}
 local lootConnection = nil -- Para controlar o evento ChildAdded
 
--- Função para verificar se um item está dentro da distância
+-- Função para verificar distância
 local function isWithinDistance(item)
     local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then
-        return false
-    end
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
     
     local rootPart = character.HumanoidRootPart
     local itemPart = item:IsA("Model") and item.PrimaryPart or item
-    
-    if not itemPart then
-        return false
-    end
+    if not itemPart then return false end
     
     return (rootPart.Position - itemPart.Position).Magnitude <= espDistance
 end
 
 -- Função para criar ESP
 local function createESP(part, text, color)
-    if not activeESP or not isWithinDistance(part) then return end -- Não cria ESP se estiver desligado ou fora da distância
+    if not activeESP or not isWithinDistance(part) then return end -- Verifica distância e toggle
     
     local billboard = Instance.new("BillboardGui")
     billboard.Size = UDim2.new(0, 100, 0, 20)
@@ -60,7 +55,7 @@ local function updateESP()
 
     if not activeESP then return end
 
-    -- Cria ESP para todos os itens no Loot (dentro da distância)
+    -- Cria ESP apenas para itens dentro de 500 studs
     for _, item in pairs(workspace.Loot:GetChildren()) do
         if (item:IsA("Model") or item:IsA("BasePart")) and isWithinDistance(item) then
             createESP(item, item.Name, Color3.fromRGB(255, 255, 255))
@@ -87,7 +82,7 @@ end
 -- Cria janela Fluent
 local Window = Fluent:CreateWindow({
     Title = "Desert Detectors " .. Fluent.Version,
-    SubTitle = "by LaneS2",
+    SubTitle = "by LaneS2 | Distância: 500 studs",
     TabWidth = 120,
     Size = UDim2.fromOffset(460, 320),
     Acrylic = true,
@@ -105,8 +100,8 @@ local Options = Fluent.Options
 
 -- Adiciona seção ESP
 Tabs.Main:AddParagraph({
-    Title = "Esp",
-    Content = "Settings"
+    Title = "ESP (500 studs)",
+    Content = "Ativa/Desativa a visualização de itens"
 })
 
 -- Toggle para ESP
@@ -117,23 +112,9 @@ local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
 
 ESPToggle:OnChanged(function(value)
     activeESP = value
-    toggleLootConnection(activeESP) -- Ativa/desativa o evento
-    updateESP() -- Atualiza os ESPs visíveis
+    toggleLootConnection(activeESP)
+    updateESP()
 end)
-
--- Slider para Distância do ESP
-local DistanceSlider = Tabs.Main:AddSlider("DistanceSlider", {
-    Title = "Distância do ESP",
-    Description = "Ajuste a distância máxima do ESP",
-    Min = 10,
-    Max = 1250,
-    Default = espDistance,
-    Rounding = 0,
-    Callback = function(value)
-        espDistance = value
-        updateESP() -- Atualiza os ESPs quando a distância muda
-    end
-})
 
 -- Inicializa SaveManager e InterfaceManager
 SaveManager:SetLibrary(Fluent)
@@ -152,6 +133,13 @@ SaveManager:LoadAutoloadConfig()
 -- Notificação
 Fluent:Notify({
     Title = "Desert Detectors",
-    Content = "Script loaded successfully!",
+    Content = "ESP configurado para 500 studs!",
     Duration = 5
 })
+
+-- Atualização contínua do ESP
+game:GetService("RunService").Heartbeat:Connect(function()
+    if activeESP then
+        updateESP()
+    end
+end)
