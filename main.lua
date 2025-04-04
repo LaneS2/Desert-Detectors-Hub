@@ -7,12 +7,30 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Variáveis globais
 local activeESP = false -- Começa desligado
+local espDistance = 100 -- Distância padrão (pode ser alterada)
 local espObjects = {}
 local lootConnection = nil -- Para controlar o evento ChildAdded
 
+-- Função para verificar se um item está dentro da distância
+local function isWithinDistance(item)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    local rootPart = character.HumanoidRootPart
+    local itemPart = item:IsA("Model") and item.PrimaryPart or item
+    
+    if not itemPart then
+        return false
+    end
+    
+    return (rootPart.Position - itemPart.Position).Magnitude <= espDistance
+end
+
 -- Função para criar ESP
 local function createESP(part, text, color)
-    if not activeESP then return end -- Não cria ESP se estiver desligado
+    if not activeESP or not isWithinDistance(part) then return end -- Não cria ESP se estiver desligado ou fora da distância
     
     local billboard = Instance.new("BillboardGui")
     billboard.Size = UDim2.new(0, 100, 0, 20)
@@ -42,9 +60,9 @@ local function updateESP()
 
     if not activeESP then return end
 
-    -- Cria ESP para todos os itens no Loot
+    -- Cria ESP para todos os itens no Loot (dentro da distância)
     for _, item in pairs(workspace.Loot:GetChildren()) do
-        if item:IsA("Model") or item:IsA("BasePart") then
+        if (item:IsA("Model") or item:IsA("BasePart")) and isWithinDistance(item) then
             createESP(item, item.Name, Color3.fromRGB(255, 255, 255))
         end
     end
@@ -59,7 +77,7 @@ local function toggleLootConnection(enable)
     
     if enable then
         lootConnection = workspace.Loot.ChildAdded:Connect(function(child)
-            if child:IsA("Model") or child:IsA("BasePart") then
+            if (child:IsA("Model") or child:IsA("BasePart")) and isWithinDistance(child) then
                 createESP(child, child.Name, Color3.fromRGB(255, 255, 255))
             end
         end)
@@ -102,6 +120,20 @@ ESPToggle:OnChanged(function(value)
     toggleLootConnection(activeESP) -- Ativa/desativa o evento
     updateESP() -- Atualiza os ESPs visíveis
 end)
+
+-- Slider para Distância do ESP
+local DistanceSlider = Tabs.Main:AddSlider("DistanceSlider", {
+    Title = "Distância do ESP",
+    Description = "Ajuste a distância máxima do ESP",
+    Min = 10,
+    Max = 1250,
+    Default = espDistance,
+    Rounding = 0,
+    Callback = function(value)
+        espDistance = value
+        updateESP() -- Atualiza os ESPs quando a distância muda
+    end
+})
 
 -- Inicializa SaveManager e InterfaceManager
 SaveManager:SetLibrary(Fluent)
