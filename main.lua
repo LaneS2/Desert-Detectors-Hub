@@ -7,25 +7,12 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Variáveis globais
 local activeESP = false -- Começa desligado
-local espDistance = 500 -- DISTÂNCIA FIXA DE 500 STUDS
 local espObjects = {}
 local lootConnection = nil -- Para controlar o evento ChildAdded
 
--- Função para verificar distância
-local function isWithinDistance(item)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
-    
-    local rootPart = character.HumanoidRootPart
-    local itemPart = item:IsA("Model") and item.PrimaryPart or item
-    if not itemPart then return false end
-    
-    return (rootPart.Position - itemPart.Position).Magnitude <= espDistance
-end
-
 -- Função para criar ESP
 local function createESP(part, text, color)
-    if not activeESP or not isWithinDistance(part) then return end -- Verifica distância e toggle
+    if not activeESP then return end -- Verifica distância e toggle
     
     local billboard = Instance.new("BillboardGui")
     billboard.Size = UDim2.new(0, 100, 0, 20)
@@ -55,9 +42,9 @@ local function updateESP()
 
     if not activeESP then return end
 
-    -- Cria ESP apenas para itens dentro de 500 studs
+    -- Cria ESP para todos os itens no Loot
     for _, item in pairs(workspace.Loot:GetChildren()) do
-        if (item:IsA("Model") or item:IsA("BasePart")) and isWithinDistance(item) then
+        if item:IsA("Model") or item:IsA("BasePart") then
             createESP(item, item.Name, Color3.fromRGB(255, 255, 255))
         end
     end
@@ -72,17 +59,18 @@ local function toggleLootConnection(enable)
     
     if enable then
         lootConnection = workspace.Loot.ChildAdded:Connect(function(child)
-            if (child:IsA("Model") or child:IsA("BasePart")) and isWithinDistance(child) then
+            if child:IsA("Model") or child:IsA("BasePart") then
                 createESP(child, child.Name, Color3.fromRGB(255, 255, 255))
             end
         end)
     end
 end
 
+
 -- Cria janela Fluent
 local Window = Fluent:CreateWindow({
     Title = "Desert Detectors " .. Fluent.Version,
-    SubTitle = "by LaneS2 | Distância: 500 studs",
+    SubTitle = "by LaneS2",
     TabWidth = 120,
     Size = UDim2.fromOffset(460, 320),
     Acrylic = true,
@@ -92,16 +80,17 @@ local Window = Fluent:CreateWindow({
 
 -- Cria abas
 local Tabs = {
-    Main = Window:AddTab({ Title = "Main", Icon = "" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+    Main = Window:AddTab({ Title = "Main", Icon = "house" }),
+    Player = Window:AddTab({ Title = "Player", Icon = "users-round"}),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "bolt" })
 }
 
 local Options = Fluent.Options
 
 -- Adiciona seção ESP
 Tabs.Main:AddParagraph({
-    Title = "ESP (500 studs)",
-    Content = "Ativa/Desativa a visualização de itens"
+    Title = "ESP",
+    Content = "Esp Item's"
 })
 
 -- Toggle para ESP
@@ -109,6 +98,22 @@ local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
     Title = "ESP",
     Default = false
 })
+-- Button Get Money
+local MoneyBtn = Tabs.Main:AddButton({
+        Title = "100K Money",
+        Description = "Get 100k money on clicked",
+        Callback = function()
+            local args = {
+                [1] = -10
+            }
+            game:GetService("ReplicatedStorage").Purchase_Legendary_Crate:FireServer(unpack(args))
+            Fluent:Notify({
+                Title = "100K Money",
+                Content = "100K Added to your account",
+                Duration = 5
+            })
+        end
+        })
 
 ESPToggle:OnChanged(function(value)
     activeESP = value
@@ -133,7 +138,7 @@ SaveManager:LoadAutoloadConfig()
 -- Notificação
 Fluent:Notify({
     Title = "Desert Detectors",
-    Content = "ESP configurado para 500 studs!",
+    Content = "Creator: lane_viana discord)",
     Duration = 5
 })
 
