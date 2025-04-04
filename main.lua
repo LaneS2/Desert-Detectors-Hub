@@ -3,18 +3,18 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Criação da janela do Fluent
+-- Create Fluent window
 local Window = Fluent:CreateWindow({
     Title = "Desert Detectors " .. Fluent.Version,
     SubTitle = "by LaneS2",
     TabWidth = 120,
     Size = UDim2.fromOffset(460, 320),
-    Acrylic = true,  -- O fundo borrado pode ser ativado ou desativado
+    Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Criação das abas
+-- Create tabs
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -22,94 +22,196 @@ local Tabs = {
 
 local Options = Fluent.Options
 
--- Variáveis para controlar o ESP
+-- Variables for ESP control
 local ESP = {
-    Enabled = true,
-    Distance = 500
+    Enabled = false, -- Default to false
+    Distance = 500,
+    ActiveESP = false,
+    ScreenGui = nil,
+    ESPObjects = {}
 }
 
--- Adicionando a seção de Configs Esp
+-- Add ESP section
 Tabs.Main:AddParagraph({
-        Title = "Esp",
-        Content = "Settings"
-    })
--- Toggle para ativar/desativar o ESP
-local ESPToggle = Tabs.Main:AddToggle("OnESP", {Title="ESP", Default = false})
-ESPToggle:OnChanged(function()
-    if ESP.Enabled == false then
-        ESP.Enabled = true
-    else
-        ESP.Enabled = false
-    end
-end) -- Aqui está a chave de fechamento correta
+    Title = "Esp",
+    Content = "Settings"
+})
 
-Options.ESPToggle:SetValue(false)
+-- Toggle for ESP
+local ESPToggle = Tabs.Main:AddToggle("ESPToggle", {
+    Title = "ESP",
+    Default = ESP.Enabled
+})
 
--- Caixa de texto para definir a distância do ESP
-local DistanceInput = Tabs.Main:AddInput("Distância do ESP", {
-    Title = "Distância",
-    Default = tostring(ESP.Distance),
-    Numeric = true,
-    Finished = true
-}, function(value)
-    local distance = tonumber(value)
-    if distance then
-        ESP.Distance = distance
-        print("Distância do ESP:", ESP.Distance)
+ESPToggle:OnChanged(function(value)
+    ESP.Enabled = value
+    if ESP.Enabled then
+        EnableESP()
     else
-        print("Por favor, insira um valor válido para a distância.")
+        DisableESP()
     end
 end)
 
--- Slider para ajustar a distância do ESP
-local DistanceSlider = Tabs.Main:AddSlider("Distância do ESP", {
-    Title = "Distância",
-    Description = "Ajuste a distância do ESP",
+-- Distance input
+local DistanceInput = Tabs.Main:AddInput("DistanceInput", {
+    Title = "Distance",
+    Default = tostring(ESP.Distance),
+    Numeric = true,
+    Finished = true,
+    Callback = function(text)
+        local distance = tonumber(text)
+        if distance and distance >= 50 and distance <= 1000 then
+            ESP.Distance = distance
+            Options.DistanceSlider:SetValue(distance)
+            UpdateESP()
+        end
+    end
+})
+
+-- Distance slider
+local DistanceSlider = Tabs.Main:AddSlider("DistanceSlider", {
+    Title = "Distance",
+    Description = "Adjust ESP distance",
     Min = 50,
     Max = 1000,
     Default = ESP.Distance,
     Rounding = 1,
     Callback = function(value)
         ESP.Distance = value
-        print("Distância ajustada para:", ESP.Distance)
+        Options.DistanceInput:SetValue(tostring(value))
+        UpdateESP()
     end
 })
 
--- Função para atualizar o ESP
+-- Function to create ESP GUI
+local function CreateESPGUI()
+    if ESP.ScreenGui then ESP.ScreenGui:Destroy() end
+    
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not PlayerGui then return end
+
+    ESP.ScreenGui = Instance.new("ScreenGui", PlayerGui)
+    ESP.ScreenGui.ResetOnSpawn = false
+
+    local Frame = Instance.new("Frame", ESP.ScreenGui)
+    Frame.Size = UDim2.new(0, 200, 0, 30)
+    Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Frame.BorderSizePixel = 0
+    Frame.Active = true
+    Frame.Draggable = true
+
+    local ToggleButton = Instance.new("TextButton", Frame)
+    ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+    ToggleButton.Text = "ESP: ON"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    ToggleButton.BorderSizePixel = 0
+
+    ToggleButton.MouseButton1Click:Connect(function()
+        ESP.ActiveESP = not ESP.ActiveESP
+        ToggleButton.Text = "ESP: " .. (ESP.ActiveESP and "ON" or "OFF")
+        UpdateESP()
+    end)
+end
+
+-- Function to create ESP for a part
+local function CreateESP(part)
+    if not part:IsA("BasePart") and not part:IsA("Model") then return end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 100, 0, 20)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.Adornee = part
+    billboard.Parent = ESP.ScreenGui
+    billboard.AlwaysOnTop = true
+    billboard.Enabled = ESP.ActiveESP
+
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0
+    label.TextSize = 10
+    label.Text = part.Name
+
+    table.insert(ESP.ESPObjects, billboard)
+end
+
+-- Function to update ESP
 local function UpdateESP()
-    if ESP.Enabled then
-        print("ESP Ativado com distância:", ESP.Distance)
-        -- Aqui você pode adicionar a lógica do ESP, utilizando a distância configurada
-    else
-        print("ESP Desativado")
+    if not ESP.Enabled or not ESP.ScreenGui then return end
+    
+    -- Clear old ESP objects
+    for _, obj in pairs(ESP.ESPObjects) do
+        obj:Destroy()
+    end
+    ESP.ESPObjects = {}
+
+    if not ESP.ActiveESP then return end
+
+    -- Create ESP for all loot within distance
+    local character = game:GetService("Players").LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local rootPart = character.HumanoidRootPart
+    for _, item in pairs(workspace.Loot:GetChildren()) do
+        if (item:IsA("Model") or item:IsA("BasePart")) and item:FindFirstChildOfClass("BasePart") then
+            local itemPart = item:IsA("Model") and item.PrimaryPart or item
+            if (rootPart.Position - itemPart.Position).Magnitude <= ESP.Distance then
+                CreateESP(item)
+            end
+        end
     end
 end
 
--- Atualiza o ESP constantemente
-game:GetService("RunService").Heartbeat:Connect(function()
+-- Function to enable ESP
+local function EnableESP()
+    CreateESPGUI()
+    ESP.ActiveESP = true
+    
+    -- Connect to child added event
+    workspace.Loot.ChildAdded:Connect(function(child)
+        if ESP.Enabled and ESP.ActiveESP then
+            wait(0.1) -- Wait for the item to fully load
+            if (child:IsA("Model") or child:IsA("BasePart")) and child:FindFirstChildOfClass("BasePart") then
+                CreateESP(child)
+            end
+        end
+    end)
+    
     UpdateESP()
-end)
+end
 
--- Adicionar uma notificação informando que o script foi carregado
-Fluent:Notify({
-    Title = "Fluent",
-    Content = "O script foi carregado.",
-    Duration = 8
-})
+-- Function to disable ESP
+local function DisableESP()
+    if ESP.ScreenGui then
+        ESP.ScreenGui:Destroy()
+        ESP.ScreenGui = nil
+    end
+    ESP.ActiveESP = false
+    ESP.ESPObjects = {}
+end
 
--- SaveManager e InterfaceManager para salvar as configurações
+-- Initialize
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
-
--- Configurações do SaveManager
 SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("FluentScriptHub")
-SaveManager:SetFolder("FluentScriptHub/specific-game")
+InterfaceManager:SetFolder("DesertDetectors")
+SaveManager:SetFolder("DesertDetectors/settings")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
 
--- Carregar a configuração automaticamente, se houver
+-- Load autosave config
 SaveManager:LoadAutoloadConfig()
+
+-- Notification
+Fluent:Notify({
+    Title = "Desert Detectors",
+    Content = "Script loaded successfully!",
+    Duration = 5
+})
